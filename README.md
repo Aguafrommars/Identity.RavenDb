@@ -21,22 +21,25 @@ You setup RavenDb stores using one `AddRavenDbStores` extension method
 
 You can setup RavenDb stores using the current IDocumentStore:
 
-    services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-            .AddRavenDbStores(); 
-
+```cs
+services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+        .AddRavenDbStores(); 
+```
 
 Or with a `Func<IServiceProvider, IDocumentStore>` creating the `IDocumentStore` :
 
-
-    services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-        .AddRavenDbStores(p => p.GetRequiredService<IDocumentStore>());
+```cs
+services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddRavenDbStores(p => p.GetRequiredService<IDocumentStore>());
+```
 
 Both methods can take a `string dataBase` parameter to specify the RavenDb database to use:
 
-    services.AddIdentity<IdentityUser, IdentityRole>()
-        .AddRedisStores(dataBase: "Identity")
-        .AddDefaultTokenProviders();
-
+```cs
+services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddRedisStores(dataBase: "Identity")
+    .AddDefaultTokenProviders();
+```
 ## Sample
 
 The [IdentitySample](samples/IdentitySample) is a dotnet webapp with individual authentication using a RavenDb database.  
