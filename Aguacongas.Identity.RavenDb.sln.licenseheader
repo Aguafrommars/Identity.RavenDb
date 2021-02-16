@@ -1,0 +1,14 @@
+﻿extensions: designer.cs generated.cs
+extensions: .cs .cpp .h
+// Project: Aguafrommars/Identity.RavenDb
+// Copyright (c) 2021 Olivier Lefebvre
+extensions: .aspx .ascx
+<%-- 
+Project: Aguafrommars/Identity.RavenDb
+Copyright (c) 2021 Olivier Lefebvre
+--%>
+extensions:  .xml .config .xsd
+<!--
+Project: Aguafrommars/Identity.RavenDb
+Copyright (c) 2021 Olivier Lefebvre
+-->
