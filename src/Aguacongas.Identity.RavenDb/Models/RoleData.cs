@@ -3,9 +3,11 @@
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Aguacongas.Identity.RavenDb
 {
+    [SuppressMessage("Major Code Smell", "S2436:Types and methods should not have too many generic parameters", Justification = "All are needed")]
     public class RoleData<TKey, TRole, TRoleClaims> 
         where TKey: IEquatable<TKey>
         where TRole : IdentityRole<TKey>

@@ -90,6 +90,7 @@ namespace Aguacongas.Identity.RavenDb
     /// <typeparam name="TUserLogin">The type representing a user external login.</typeparam>
     /// <typeparam name="TUserToken">The type representing a user token.</typeparam>
     /// <typeparam name="TRoleClaim">The type representing a role claim.</typeparam>
+    [SuppressMessage("Major Code Smell", "S2436:Types and methods should not have too many generic parameters", Justification = "All are needed")]
     public class UserStore<TUser, TKey, TRole, TUserClaim, TUserRole, TUserLogin, TUserToken, TRoleClaim> :
         RavenDbUserStoreBase<TUser, TKey, TRole, TUserClaim, TUserRole, TUserLogin, TUserToken, TRoleClaim>
         where TUser : IdentityUser<TKey>
@@ -395,7 +396,7 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNullOrEmpty(roleName, nameof(roleName));
 
             var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>($"userrole/{roleName}-", token: cancellationToken).ConfigureAwait(false);
-            var userList = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>(userRoleList.Select(ur => $"user/{ConvertIdToString(ur.UserId)}"), cancellationToken).ConfigureAwait(false);
+            var userList = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(userRoleList.Select(ur => $"user/{ConvertIdToString(ur.UserId)}"), cancellationToken).ConfigureAwait(false);
 
             return userList.Select(d => d.Value.User).ToList();
         }

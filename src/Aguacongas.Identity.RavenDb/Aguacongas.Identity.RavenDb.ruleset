@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="SonarQube - Identity.RavenDb Sonar way" ToolsVersion="16.0">
+  <Include Path="..\..\.sonarlint\aguafrommars_identity.ravendbcsharp.ruleset" Action="Default" />
+  <Include Path="aguacongas.identity.ravendb.ruleset" Action="Default" />
+</RuleSet>
