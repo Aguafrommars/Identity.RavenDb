@@ -25,7 +25,7 @@ install:
     - sh: sudo apt-get update
     - sh: sudo chmod +x ./dotnet-install.sh
     - sh: sudo ./dotnet-install.sh -Channel Current -Version $donetsdk -InstallDir ./dotnetsdk -NoPath
-    - sh: export PATH=/home/appveyor/projects/identity-redis/dotnetsdk:$PATH
+    - sh: export PATH=/home/appveyor/projects/identity-ravendb/dotnetsdk:$PATH
     - sh: sudo apt -y install nuget
     - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }
     - ps: dotnet tool install --global GitVersion.Tool
