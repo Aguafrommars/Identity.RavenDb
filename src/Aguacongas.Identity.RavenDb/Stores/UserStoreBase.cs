@@ -21,6 +21,7 @@ namespace Aguacongas.Identity.RavenDb
     /// <typeparam name="TUserToken">The type representing a user token.</typeparam>
     [SuppressMessage("Major Code Smell", "S3881:\"IDisposable\" should be implemented correctly", Justification = "Nothing to dispose")]
     [SuppressMessage("Critical Code Smell", "S1006:Method overrides should not change parameter defaults", Justification = "<Pending>")]
+    [SuppressMessage("Major Code Smell", "S2436:Types and methods should not have too many generic parameters", Justification = "All are needed")]
     public abstract class RavenDbUserStoreBase<TUser, TKey, TUserClaim, TUserLogin, TUserToken> :
         IQueryableUserStore<TUser>,
         IUserLoginStore<TUser>,
@@ -330,20 +331,8 @@ namespace Aguacongas.Identity.RavenDb
         /// <returns>
         /// The <see cref="Task"/> for the asynchronous operation, containing the user, if any which matched the specified login provider and key.
         /// </returns>
-        public async virtual Task<TUser> FindByLoginAsync(string loginProvider, string providerKey,
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            ThrowIfDisposed();
-            var userLogin = await FindUserLoginAsync(loginProvider, providerKey, cancellationToken)
-                .ConfigureAwait(false);
-            if (userLogin != null)
-            {
-                return await FindUserAsync(userLogin.UserId, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            return null;
-        }
+        public abstract Task<TUser> FindByLoginAsync(string loginProvider, string providerKey,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets a flag indicating whether the email address for the specified <paramref name="user"/> has been verified, true if the email address is verified otherwise

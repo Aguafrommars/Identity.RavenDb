@@ -6,6 +6,7 @@ using Raven.Client.Documents.Session;
 using Raven.Client.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading;
@@ -63,6 +64,7 @@ namespace Aguacongas.Identity.RavenDb
     /// <typeparam name="TUserClaim">The type representing a claim.</typeparam>
     /// <typeparam name="TUserLogin">The type representing a user external login.</typeparam>
     /// <typeparam name="TUserToken">The type representing a user token.</typeparam>
+    [SuppressMessage("Major Code Smell", "S2436:Types and methods should not have too many generic parameters", Justification = "All are needed")]
     public class UserOnlyStore<TUser, TKey, TUserClaim, TUserLogin, TUserToken> :
         RavenDbUserStoreBase<TUser, TKey, TUserClaim, TUserLogin, TUserToken>,
         IUserLoginStore<TUser>,
@@ -88,7 +90,7 @@ namespace Aguacongas.Identity.RavenDb
         /// A navigation property for the users the store contains.
         /// </summary>
         public override IQueryable<TUser> Users
-        => _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>()
+        => _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
             .Select(d => d.User)
             .ToListAsync().ConfigureAwait(false).GetAwaiter().GetResult().AsQueryable();
 
@@ -116,7 +118,7 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var data = new UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>
+            var data = new UserData<TKey, TUser, TUserClaim, TUserLogin>
             {
                 Id = $"user/{userId}",
                 User = user
@@ -140,7 +142,7 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(user, nameof(user));
 
             var userId = ConvertIdToString(user.Id);
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
 
             data.User = user;
 
@@ -268,7 +270,7 @@ namespace Aguacongas.Identity.RavenDb
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
             return data?.User;
         }
 
@@ -293,7 +295,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>(index.UserId, cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
             return data.User;
         }
 
@@ -474,7 +476,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>(index.UserId, cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
             return data.User;
         }
 
@@ -497,7 +499,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>(index.UserId, cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
             return data?.User;
         }
 
@@ -515,7 +517,7 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(claim, nameof(claim));
 
-            return await _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>()
+            return await _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
                 .Where(d => d.Claims.Any(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value))
                 .Select(d => d.User)
                 .ToListAsync(cancellationToken)
@@ -663,7 +665,7 @@ namespace Aguacongas.Identity.RavenDb
         /// <returns>The user login if it exists.</returns>
         protected override Task<TUserLogin> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
         {
-            return _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>()
+            return _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
                 .Where(d => d.Logins.Any(l=> l.LoginProvider == loginProvider && l.ProviderKey == providerKey))
                 .Select(d => d.Logins.First(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey))
                 .FirstOrDefaultAsync();
@@ -672,14 +674,14 @@ namespace Aguacongas.Identity.RavenDb
         protected virtual async Task<List<TUserClaim>> GetUserClaimsAsync(TUser user, CancellationToken cancellationToken)
         {
             var userId = ConvertIdToString(user.Id);
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
 
             return data.Claims;
         }
 
         protected virtual async Task<List<TUserLogin>> GetUserLoginsAsync(string userId, CancellationToken cancellationToken)
         {
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin, TUserToken>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
             return data.Logins;
         }
     }

@@ -56,6 +56,7 @@ namespace Aguacongas.Identity.RavenDb
     [SuppressMessage("Major Code Smell", "S2326:Unused type parameters should be removed", Justification = "Identity store implementation")]
     [SuppressMessage("Major Code Smell", "S3881:\"IDisposable\" should be implemented correctly", Justification = "Nothing to dispose")]
     [SuppressMessage("Critical Code Smell", "S1006:Method overrides should not change parameter defaults", Justification = "<Pending>")]
+    [SuppressMessage("Major Code Smell", "S2436:Types and methods should not have too many generic parameters", Justification = "All are needed")]
     public class RoleStore<TRole, TKey, TUserRole, TRoleClaim> :
         IQueryableRoleStore<TRole>,
         IRoleClaimStore<TRole>
@@ -334,7 +335,7 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(role, nameof(role));
 
-            var claimList = await GetRoleClaimsAsync(role).ConfigureAwait(false); ;
+            var claimList = await GetRoleClaimsAsync(role).ConfigureAwait(false);
             return claimList
                 .Select(c => c.ToClaim())
                 .ToList();

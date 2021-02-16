@@ -1,0 +1,15 @@
+{
+  "ServerUri": "https://sonarcloud.io/",
+  "Organization": {
+    "Key": "aguafrommars",
+    "Name": "Agua from Mars"
+  },
+  "ProjectKey": "Aguafrommars_Identity.RavenDb",
+  "ProjectName": "Identity.RavenDb",
+  "Profiles": {
+    "CSharp": {
+      "ProfileKey": "AXGxnT6tcmVIlpcnlydl",
+      "ProfileTimestamp": "2021-02-15T09:35:56Z"
+    }
+  }
+}
