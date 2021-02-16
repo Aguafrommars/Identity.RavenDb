@@ -16,6 +16,7 @@ environment:
     secure: u7qaOQsrkLqq44yS24C0eM2vRCzp1A8gZTWNmlA58TIDJGmrDXguHL9H/vww7Fg/
   donetsdk: 3.1.406
   donetsdk5: 5.0.102
+  JAVA_HOME: C:\Program Files\Java\jdk14
 init:
     - cmd: git config --global core.autocrlf true
 install:
@@ -34,6 +35,7 @@ install:
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: dotnet tool install --global dotnet-sonarscanner
+    - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
     - ps: ./appveyorinit.ps1
 build_script:
