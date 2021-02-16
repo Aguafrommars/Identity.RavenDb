@@ -40,7 +40,7 @@ Both methods can take a `string dataBase` parameter to specify the RavenDb datab
 
 ## Sample
 
-The sample is a copy of [IdentitySample.Mvc](https://github.com/aspnet/Identity/tree/dev/samples/IdentitySample.Mvc) sample using a RavenDb database.  
+The [IdentitySample](samples/IdentitySample) is a dotnet webapp with individual authentication using a RavenDb database.  
 
 ## Tests
 
