@@ -17,24 +17,23 @@ Nuget packages
 
 ## Setup
 
-You setup Redis stores using one `AddRavenDbStores` extension method
+You setup RavenDb stores using one `AddRavenDbStores` extension method
 
 You can setup RavenDb stores using the current IDocumentStore:
 
-    services.AddIdentity<ApplicationUser, IdentityRole>()
-        .AddRavenDbStores()
-        .AddDefaultTokenProviders();
+    services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+            .AddRavenDbStores(); 
+
 
 Or with a `Func<IServiceProvider, IDocumentStore>` creating the `IDocumentStore` :
 
 
-    services.AddIdentity<ApplicationUser, IdentityRole>()
-        .AddRavenDbStores(p => p.GetRequiredService<IDocumentStore>())
-        .AddDefaultTokenProviders();
+    services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+        .AddRavenDbStores(p => p.GetRequiredService<IDocumentStore>());
 
 Both methods can take a `string dataBase` parameter to specify the RavenDb database to use:
 
-    services.AddIdentity<ApplicationUser, IdentityRole>()
+    services.AddIdentity<IdentityUser, IdentityRole>()
         .AddRedisStores(dataBase: "Identity")
         .AddDefaultTokenProviders();
 
