@@ -13,6 +13,8 @@ else
     $nextversion = $env:GitVersion_MajorMinorPatch
 }
 
+$nextversion = $nextversion.Trim()
+
 appveyor SetVariable -Name SemVer -Value $nextversion
 
 if (![string]::IsNullOrEmpty($env:GitVersion_PreReleaseLabel))
