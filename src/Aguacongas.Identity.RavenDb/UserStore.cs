@@ -247,9 +247,15 @@ namespace Aguacongas.Identity.RavenDb
             var userId = ConvertIdToString(user.Id);
 
             var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>(idPrefix: "userrole/", matches: $"*-{userId}", token: cancellationToken).ConfigureAwait(false);
-            var roles = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>(userRoleList.Select(r => $"role/{ConvertIdToString(r.RoleId)}"), cancellationToken).ConfigureAwait(false);
-
-            return roles.Select(r => r.Value.Role.Name).ToList();
+            var roles = await _session.LoadAsync<RoleData>(userRoleList.Select(r => $"roledata/{ConvertIdToString(r.RoleId)}"), builder => builder.IncludeDocuments(d => d.RoleId), cancellationToken).ConfigureAwait(false);
+            var dataList = roles.Where(r => r.Value != null).Select(r => r.Value);
+            var list = new List<string>(dataList.Count());
+            foreach(var data in dataList)
+            {
+                var role = await _session.LoadAsync<TRole>(data.RoleId, cancellationToken).ConfigureAwait(false);
+                list.Add(role.Name);
+            }
+            return list;
         }
 
         /// <summary>
@@ -481,9 +487,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>(index.RoleId, cancellationToken).ConfigureAwait(false);
-
-            return data.Role;
+            return await _session.LoadAsync<TRole>(index.RoleId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -527,8 +531,7 @@ namespace Aguacongas.Identity.RavenDb
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>($"role/{id}", cancellationToken).ConfigureAwait(false);
-            return data.Role;
+            return await _session.LoadAsync<TRole>($"role/{id}", cancellationToken).ConfigureAwait(false);
         }
 
         private static void AssertNotNullOrEmpty(string p, string pName)

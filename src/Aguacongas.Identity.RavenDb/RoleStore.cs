@@ -71,8 +71,7 @@ namespace Aguacongas.Identity.RavenDb
         /// <summary>
         /// A navigation property for the roles the store contains.
         /// </summary>
-        public IQueryable<TRole> Roles => _session.Query<RoleData<TKey, TRole, TRoleClaim>>()
-            .Select(d => d.Role)
+        public IQueryable<TRole> Roles => _session.Query<TRole>()
             .ToListAsync().ConfigureAwait(false).GetAwaiter().GetResult().AsQueryable();
 
         /// <summary>
@@ -104,12 +103,14 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(role, nameof(role));
 
             var roleId = ConvertIdToString(role.Id);
-            var data = new RoleData<TKey, TRole, TRoleClaim>
+            var data = new RoleData
             {
-                Id = $"role/{roleId}",
-                Role = role
+                Id = $"roledata/{roleId}",
+                RoleId = $"role/{roleId}"
             };
-            await _session.StoreAsync(data, cancellationToken).ConfigureAwait(false);
+            await _session.StoreAsync(role, data.RoleId, cancellationToken).ConfigureAwait(false);
+            await _session.StoreAsync(data, data.Id, cancellationToken).ConfigureAwait(false);
+
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             return IdentityResult.Success;
@@ -128,8 +129,8 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(role, nameof(role));
 
             var roleId = ConvertIdToString(role.Id);
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>($"role/{roleId}").ConfigureAwait(false);
-            data.Role = role;
+            var existing = await _session.LoadAsync<TRole>($"role/{roleId}").ConfigureAwait(false);
+            CloneEntity(existing, typeof(TRole), role);
 
             try
             {
@@ -156,7 +157,13 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(role, nameof(role));
 
             var roleId = ConvertIdToString(role.Id);
-            _session.Delete($"role/{roleId}");
+
+            var data = await _session.LoadAsync<RoleData>($"roledata/{roleId}", cancellationToken).ConfigureAwait(false);
+            _session.Delete(data.RoleId);
+            foreach(var claimId in data.ClaimIds)
+            {
+                _session.Delete(claimId);
+            }
             _session.Delete($"rolename/{role.NormalizedName}");
 
             try
@@ -229,9 +236,8 @@ namespace Aguacongas.Identity.RavenDb
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>($"role/{roleId}", cancellationToken).ConfigureAwait(false);
-
-            return data?.Role;
+            var data = await _session.LoadAsync<RoleData>($"role/{roleId}", builder => builder.IncludeDocuments(d => d.RoleId), cancellationToken).ConfigureAwait(false);
+            return await _session.LoadAsync<TRole>(data.RoleId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -255,9 +261,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>(index.RoleId, cancellationToken).ConfigureAwait(false);
-
-            return data.Role;
+            return await _session.LoadAsync<TRole>(index.RoleId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -335,7 +339,7 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(role, nameof(role));
 
-            var claimList = await GetRoleClaimsAsync(role).ConfigureAwait(false);
+            var claimList = await GetRoleClaimsAsync(role, cancellationToken).ConfigureAwait(false);
             return claimList
                 .Select(c => c.ToClaim())
                 .ToList();
@@ -354,8 +358,13 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(role, nameof(role));
             AssertNotNull(claim, nameof(claim));
 
-            var roleClaims = await GetRoleClaimsAsync(role).ConfigureAwait(false);
-            roleClaims.Add(CreateRoleClaim(role, claim));
+            var roleId = ConvertIdToString(role.Id);
+            var data = await _session.LoadAsync<RoleData>($"roledata/{roleId}", cancellationToken).ConfigureAwait(false);
+            var roleClaim = CreateRoleClaim(role, claim);
+            roleClaim.Id = data.ClaimIds.Count;
+            var claimId = $"roleclaim/{roleId}@{roleClaim.Id}";
+            data.ClaimIds.Add(claimId);
+            await _session.StoreAsync(roleClaim, claimId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -371,8 +380,15 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(role, nameof(role));
             AssertNotNull(claim, nameof(claim));
 
-            var roleClaims = await GetRoleClaimsAsync(role).ConfigureAwait(false);
-            roleClaims.RemoveAll(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value);
+            var roleId = ConvertIdToString(role.Id);
+            var claimList = await GetRoleClaimsAsync(role, cancellationToken).ConfigureAwait(false);
+            var data = await _session.LoadAsync<RoleData>($"roledata/{roleId}", cancellationToken).ConfigureAwait(false);
+            foreach(var roleClain in claimList.Where(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value))
+            {
+                var claimId = $"roleclaim/{roleId}@{roleClain.Id}";
+                _session.Delete(claimId);
+                data.ClaimIds.Remove(claimId);
+            }
         }
 
         /// <summary>
@@ -412,11 +428,16 @@ namespace Aguacongas.Identity.RavenDb
             return id.ToString();
         }
 
-        protected virtual async Task<List<TRoleClaim>> GetRoleClaimsAsync(TRole role)
+        protected virtual async Task<List<TRoleClaim>> GetRoleClaimsAsync(TRole role, CancellationToken cancellationToken = default)
         {
             var roleId = ConvertIdToString(role.Id);
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>($"role/{roleId}").ConfigureAwait(false);
-            return data.Claims;
+            var data = await _session.LoadAsync<RoleData>($"roledata/{roleId}", builder => builder.IncludeDocuments(d => d.ClaimIds), cancellationToken).ConfigureAwait(false);
+            var list = new List<TRoleClaim>(data.ClaimIds.Count);
+            foreach(var id in data.ClaimIds)
+            {
+                list.Add(await _session.LoadAsync<TRoleClaim>(id).ConfigureAwait(false));
+            }
+            return list;
         }
 
         private static void AssertNotNull(object p, string pName)
@@ -424,6 +445,14 @@ namespace Aguacongas.Identity.RavenDb
             if (p == null)
             {
                 throw new ArgumentNullException(pName);
+            }
+        }
+
+        private static void CloneEntity(object entity, Type type, object loaded)
+        {
+            foreach (var property in type.GetProperties())
+            {
+                property.SetValue(entity, property.GetValue(loaded));
             }
         }
     }
