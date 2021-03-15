@@ -199,7 +199,7 @@ namespace Aguacongas.Identity.RavenDb
                 UserId = user.Id
             };
 
-            await _session.StoreAsync(userRole, $"userrole/{roleName}-{userId}", cancellationToken).ConfigureAwait(false);
+            await _session.StoreAsync(userRole, $"userrole/{roleName}@{userId}", cancellationToken).ConfigureAwait(false);
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -226,7 +226,7 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var userRole = await _session.LoadAsync<TUserRole>($"userrole/{roleName}-{userId}", cancellationToken).ConfigureAwait(false);
+            var userRole = await _session.LoadAsync<TUserRole>($"userrole/{roleName}@{userId}", cancellationToken).ConfigureAwait(false);
             _session.Delete(userRole);
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -246,10 +246,9 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>(idPrefix: "userrole/", matches: $"*-{userId}", token: cancellationToken).ConfigureAwait(false);
-            var roles = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>(userRoleList.Select(r => $"role/{ConvertIdToString(r.RoleId)}"), cancellationToken).ConfigureAwait(false);
-
-            return roles.Select(r => r.Value.Role.Name).ToList();
+            var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>(idPrefix: "userrole/", matches: $"*@{userId}", token: cancellationToken).ConfigureAwait(false);
+            var roles = await _session.LoadAsync<TRole>(userRoleList.Select(r => $"role/{ConvertIdToString(r.RoleId)}"), cancellationToken).ConfigureAwait(false);
+            return roles.Where(r => r.Value != null).Select(r => r.Value.Name).ToList();
         }
 
         /// <summary>
@@ -268,7 +267,7 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNullOrEmpty(roleName, nameof(roleName));
 
             var userId = ConvertIdToString(user.Id);
-            var userRole = await _session.LoadAsync<TUserRole>($"userrole/{roleName}-{userId}", cancellationToken).ConfigureAwait(false);
+            var userRole = await _session.LoadAsync<TUserRole>($"userrole/{roleName}@{userId}", cancellationToken).ConfigureAwait(false);
             return userRole != null;
         }
 
@@ -395,10 +394,10 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNullOrEmpty(roleName, nameof(roleName));
 
-            var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>($"userrole/{roleName}-", token: cancellationToken).ConfigureAwait(false);
-            var userList = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(userRoleList.Select(ur => $"user/{ConvertIdToString(ur.UserId)}"), cancellationToken).ConfigureAwait(false);
+            var userRoleList = await _session.Advanced.LoadStartingWithAsync<TUserRole>($"userrole/{roleName}@", token: cancellationToken).ConfigureAwait(false);
+            var userList = await _session.LoadAsync<TUser>(userRoleList.Select(ur => $"user/{ConvertIdToString(ur.UserId)}"), cancellationToken).ConfigureAwait(false);
 
-            return userList.Select(d => d.Value.User).ToList();
+            return userList.Where(u => u.Value != null).Select(u => u.Value).ToList();
         }
 
         /// <summary>
@@ -481,9 +480,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>(index.RoleId, cancellationToken).ConfigureAwait(false);
-
-            return data.Role;
+            return await _session.LoadAsync<TRole>(index.RoleId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -495,26 +492,7 @@ namespace Aguacongas.Identity.RavenDb
         protected override Task<TUser> FindUserAsync(TKey userId, CancellationToken cancellationToken)
             => FindByIdAsync(userId.ToString(), cancellationToken);
         
-        /// <summary>
-        /// Return a user login with the matching userId, provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="userId">The user's id.</param>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected override Task<TUserLogin> FindUserLoginAsync(string userId, string loginProvider, string providerKey, CancellationToken cancellationToken)
-            => _userOnlyStore.FindUserLoginInternalAsync(userId, loginProvider, providerKey, cancellationToken);
-
-        /// <summary>
-        /// Return a user login with  provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected override Task<TUserLogin> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
-            => _userOnlyStore.FindUserLoginInternalAsync(loginProvider, providerKey, cancellationToken);
+        
         
         protected override void Dispose(bool disposed)
         {
@@ -527,8 +505,7 @@ namespace Aguacongas.Identity.RavenDb
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<RoleData<TKey, TRole, TRoleClaim>>($"role/{id}", cancellationToken).ConfigureAwait(false);
-            return data.Role;
+            return await _session.LoadAsync<TRole>($"role/{id}", cancellationToken).ConfigureAwait(false);
         }
 
         private static void AssertNotNullOrEmpty(string p, string pName)

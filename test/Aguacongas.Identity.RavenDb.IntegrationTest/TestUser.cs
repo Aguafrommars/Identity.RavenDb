@@ -1,9 +1,6 @@
 ﻿// Project: Aguafrommars/Identity.RavenDb
 // Copyright (c) 2021 Olivier Lefebvre
 using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Aguacongas.Identity.RavenDb.IntegrationTest
 {

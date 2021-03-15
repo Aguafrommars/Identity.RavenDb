@@ -3,8 +3,6 @@
 using Aguacongas.Identity.RavenDb;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Raven.Client.Documents;
 using Raven.Client.Documents.Session;
 using System;

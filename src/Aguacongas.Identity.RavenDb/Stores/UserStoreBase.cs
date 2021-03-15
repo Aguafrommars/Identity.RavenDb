@@ -802,24 +802,7 @@ namespace Aguacongas.Identity.RavenDb
         /// <returns>The user if it exists.</returns>
         protected abstract Task<TUser> FindUserAsync(TKey userId, CancellationToken cancellationToken);
 
-        /// <summary>
-        /// Return a user login with the matching userId, provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="userId">The user's id.</param>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected abstract Task<TUserLogin> FindUserLoginAsync(string userId, string loginProvider, string providerKey, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Return a user login with  provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected abstract Task<TUserLogin> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken);
+        
 
         /// <summary>
         /// Called to create a new instance of a <see cref="IdentityUserClaim{string}"/>.

@@ -90,8 +90,7 @@ namespace Aguacongas.Identity.RavenDb
         /// A navigation property for the users the store contains.
         /// </summary>
         public override IQueryable<TUser> Users
-        => _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
-            .Select(d => d.User)
+        => _session.Query<TUser>()
             .ToListAsync().ConfigureAwait(false).GetAwaiter().GetResult().AsQueryable();
 
         /// <summary>
@@ -118,12 +117,13 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var data = new UserData<TKey, TUser, TUserClaim, TUserLogin>
+            var data = new UserData
             {
-                Id = $"user/{userId}",
-                User = user
+                Id = $"userdata/{userId}",
+                UserId = $"user/{userId}"
             };
-            await _session.StoreAsync(data, cancellationToken).ConfigureAwait(false);
+            await _session.StoreAsync(user, data.UserId, cancellationToken).ConfigureAwait(false);
+            await _session.StoreAsync(data, data.Id, cancellationToken).ConfigureAwait(false);
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
             return IdentityResult.Success;
@@ -142,9 +142,8 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(user, nameof(user));
 
             var userId = ConvertIdToString(user.Id);
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
-
-            data.User = user;
+            var existing = await _session.LoadAsync<TUser>($"user/{userId}", cancellationToken).ConfigureAwait(false);
+            CloneEntity(existing, typeof(TUser), user);
 
             try
             {
@@ -171,7 +170,16 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(user, nameof(user));
 
             var userId = ConvertIdToString(user.Id);
-            _session.Delete($"user/{userId}");
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", cancellationToken).ConfigureAwait(false);
+            _session.Delete(data.UserId);
+            foreach(var id in data.ClaimIds)
+            {
+                _session.Delete(id);
+            }
+            foreach (var id in data.LoginIds)
+            {
+                _session.Delete(id);
+            }
             _session.Delete($"username/{user.NormalizedUserName}");
 
             try
@@ -265,13 +273,12 @@ namespace Aguacongas.Identity.RavenDb
         /// <returns>
         /// The <see cref="Task"/> that represents the asynchronous operation, containing the user matching the specified <paramref name="userId"/> if it exists.
         /// </returns>
-        public override async Task<TUser> FindByIdAsync(string userId, CancellationToken cancellationToken = default)
+        public override Task<TUser> FindByIdAsync(string userId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
-            return data?.User;
+            return _session.LoadAsync<TUser>($"user/{userId}", cancellationToken);
         }
 
         /// <summary>
@@ -295,8 +302,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
-            return data.User;
+            return await _session.LoadAsync<TUser>(index.UserId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -311,7 +317,19 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(user, nameof(user));
 
-            var claimList = await GetUserClaimsAsync(user, cancellationToken).ConfigureAwait(false);
+            var userId = ConvertIdToString(user.Id);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", builder => builder.IncludeDocuments(d => d.ClaimIds), cancellationToken).ConfigureAwait(false);
+            if (data == null)
+            {
+                return null;
+            }
+
+            var claimList = new List<TUserClaim>(data.ClaimIds.Count);
+            foreach(var id in data.ClaimIds)
+            {
+                claimList.Add(await _session.LoadAsync<TUserClaim>(id, cancellationToken).ConfigureAwait(false));
+            }
+
             return claimList
                 .Select(c => c.ToClaim())
                 .ToList();
@@ -331,8 +349,15 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(user, nameof(user));
             AssertNotNull(claims, nameof(claims));
 
-            var claimList = await GetUserClaimsAsync(user, cancellationToken).ConfigureAwait(false);
-            claimList.AddRange(claims.Select(c => CreateUserClaim(user, c)));
+            var userId = ConvertIdToString(user.Id);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", cancellationToken).ConfigureAwait(false);
+            var index = data.ClaimIds.Count;
+            foreach(var claim in claims)
+            {
+                var claimId = $"userclaim/{userId}@{index++}";
+                data.ClaimIds.Add(claimId);
+                await _session.StoreAsync(CreateUserClaim(user, claim), claimId).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -351,13 +376,17 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(claim, nameof(claim));
             AssertNotNull(newClaim, nameof(newClaim));
 
-            var claimList = await GetUserClaimsAsync(user, cancellationToken).ConfigureAwait(false);
-            foreach (var uc in claimList)
+            var userId = ConvertIdToString(user.Id);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", builder => builder.IncludeDocuments(d => d.ClaimIds), cancellationToken).ConfigureAwait(false);
+
+            foreach (var claimId in data.ClaimIds)
             {
-                if (uc.ClaimType == claim.Type && uc.ClaimValue == claim.Value)
+                var userClaim = await _session.LoadAsync<TUserClaim>(claimId, cancellationToken).ConfigureAwait(false);
+                if (userClaim.ClaimType == claim.Type && userClaim.ClaimValue == claim.Value)
                 {
-                    uc.ClaimType = newClaim.Type;
-                    uc.ClaimValue = newClaim.Value;
+                    _session.Delete(claimId);
+                    await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    await _session.StoreAsync(CreateUserClaim(user, newClaim), claimId, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -375,10 +404,23 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(user, nameof(user));
             AssertNotNull(claims, nameof(claims));
 
-            var claimList = await GetUserClaimsAsync(user, cancellationToken).ConfigureAwait(false);
-            foreach (var claim in claims)
+            var userId = ConvertIdToString(user.Id);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", builder => builder.IncludeDocuments(d => d.ClaimIds), cancellationToken).ConfigureAwait(false);
+
+            var toDeleteList = new List<string>();
+            foreach (var claimId in data.ClaimIds)
             {
-                claimList.RemoveAll(uc => uc.ClaimType == claim.Type && uc.ClaimValue == claim.Value);
+                var userClaim = await _session.LoadAsync<TUserClaim>(claimId, cancellationToken).ConfigureAwait(false);
+                if (claims.Any(c => userClaim.ClaimType == c.Type && userClaim.ClaimValue == c.Value))
+                {
+                    toDeleteList.Add(claimId);
+                }
+            }
+
+            foreach(var claimId in toDeleteList)
+            {
+                _session.Delete(claimId);
+                data.ClaimIds.Remove(claimId);
             }
         }
 
@@ -398,16 +440,11 @@ namespace Aguacongas.Identity.RavenDb
             AssertNotNull(login, nameof(login));
 
             var userId = ConvertIdToString(user.Id);
-            await _session.StoreAsync(new UserLoginIndex
-            {
-                Id = $"userlogin/{login.LoginProvider}-{login.ProviderKey}",
-                UserId = $"user/{userId}",
-                LoginProvider = login.LoginProvider,
-                ProviderKey = login.ProviderKey
-            }).ConfigureAwait(false);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", cancellationToken).ConfigureAwait(false);
+            var userLoginId = $"userlogin/{login.LoginProvider}@{login.ProviderKey}";
             
-            var logins = await GetUserLoginsAsync(userId, cancellationToken).ConfigureAwait(false);
-            logins.Add(CreateUserLogin(user, login));
+            await _session.StoreAsync(CreateUserLogin(user, login), userLoginId, cancellationToken).ConfigureAwait(false);
+            data.LoginIds.Add(userLoginId);
         }
 
         /// <summary>
@@ -425,12 +462,12 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(user, nameof(user));
 
-            _session.Delete($"userlogin/{loginProvider}-{providerKey}");
-
             var userId = ConvertIdToString(user.Id);
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", cancellationToken).ConfigureAwait(false);
 
-            var logins = await GetUserLoginsAsync(userId, cancellationToken).ConfigureAwait(false);
-            logins.RemoveAll(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey);
+            var userLoginId = $"userlogin/{loginProvider}@{providerKey}";
+            data.LoginIds.Remove(userLoginId);
+            _session.Delete(userLoginId);
         }
 
         /// <summary>
@@ -449,8 +486,13 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var logins = await GetUserLoginsAsync(userId, cancellationToken).ConfigureAwait(false);
-            return logins
+            var data = await _session.LoadAsync<UserData>($"userdata/{userId}", builder => builder.IncludeDocuments(d => d.LoginIds), cancellationToken).ConfigureAwait(false);
+            var list = new List<TUserLogin>(data.LoginIds.Count);
+            foreach(var id in data.LoginIds)
+            {
+                list.Add(await _session.LoadAsync<TUserLogin>(id, cancellationToken).ConfigureAwait(false));
+            }
+            return list
                 .Select(l => new UserLoginInfo(l.LoginProvider, l.ProviderKey, l.ProviderDisplayName))
                 .ToList();
         }
@@ -470,14 +512,14 @@ namespace Aguacongas.Identity.RavenDb
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var index = await _session.LoadAsync<UserLoginIndex>($"userlogin/{loginProvider}-{providerKey}", cancellationToken).ConfigureAwait(false);
-            if (index == null)
+            var login = await _session.LoadAsync<TUserLogin>($"userlogin/{loginProvider}@{providerKey}", builder => builder.IncludeDocuments(l => $"user/{l.UserId}"), cancellationToken).ConfigureAwait(false);
+            if (login == null)
             {
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
-            return data.User;
+            var userId = ConvertIdToString(login.UserId);
+            return await _session.LoadAsync<TUser>($"user/{userId}", cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -499,8 +541,7 @@ namespace Aguacongas.Identity.RavenDb
                 return null;
             }
 
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>(index.UserId, cancellationToken).ConfigureAwait(false);
-            return data?.User;
+            return await _session.LoadAsync<TUser>(index.UserId, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -517,11 +558,15 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
             AssertNotNull(claim, nameof(claim));
 
-            return await _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
-                .Where(d => d.Claims.Any(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value))
-                .Select(d => d.User)
-                .ToListAsync(cancellationToken)
+            var userClaimsList = await _session.Query<TUserClaim>()
+                .Include(c => $"user/{c.UserId}")
+                .Where(c => c.ClaimType == claim.Type && c.ClaimValue == claim.Value)
+                .ToListAsync()
                 .ConfigureAwait(false);
+
+            var userList = await _session.LoadAsync<TUser>(userClaimsList.Select(c => $"user/{c.UserId}")
+                , cancellationToken).ConfigureAwait(false);
+            return userList.Where(u => u.Value != null).Select(u => u.Value).ToList();
         }
 
         /// <summary>
@@ -542,7 +587,7 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
 
             var userId = ConvertIdToString(user.Id);
-            var token = await _session.LoadAsync<TUserToken>($"usertoken/{userId}-{loginProvider}-{name}", cancellationToken).ConfigureAwait(false);
+            var token = await _session.LoadAsync<TUserToken>($"usertoken/{userId}@{loginProvider}@{name}", cancellationToken).ConfigureAwait(false);
             if (token == null)
             {
                 token = new TUserToken
@@ -552,7 +597,7 @@ namespace Aguacongas.Identity.RavenDb
                     UserId = user.Id,
                     Value = value
                 };
-                await _session.StoreAsync(token, $"usertoken/{userId}-{loginProvider}-{name}", cancellationToken).ConfigureAwait(false);
+                await _session.StoreAsync(token, $"usertoken/{userId}@{loginProvider}@{name}", cancellationToken).ConfigureAwait(false);
             }
             token.Value = value;
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -575,7 +620,7 @@ namespace Aguacongas.Identity.RavenDb
             ThrowIfDisposed();
 
             var userId = ConvertIdToString(user.Id);
-            _session.Delete($"usertoken/{userId}-{loginProvider}-{name}");
+            _session.Delete($"usertoken/{userId}@{loginProvider}@{name}");
             await _session.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -597,35 +642,12 @@ namespace Aguacongas.Identity.RavenDb
 
             var userId = ConvertIdToString(user.Id);
 
-            var token = await _session.LoadAsync<TUserToken>($"usertoken/{userId}-{loginProvider}-{name}", cancellationToken).ConfigureAwait(false);
+            var token = await _session.LoadAsync<TUserToken>($"usertoken/{userId}@{loginProvider}@{name}", cancellationToken).ConfigureAwait(false);
             return token?.Value;
         }
 
-        /// <summary>
-        /// Return a user login with the matching userId, provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="userId">The user's id.</param>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        internal Task<TUserLogin> FindUserLoginInternalAsync(string userId, string loginProvider, string providerKey, CancellationToken cancellationToken)
-        {
-            return FindUserLoginAsync(userId, loginProvider, providerKey, cancellationToken);
-        }
-
-        /// <summary>
-        /// Return a user login with  provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        internal Task<TUserLogin> FindUserLoginInternalAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
-        {
-            return FindUserLoginAsync(loginProvider, providerKey, cancellationToken);
-        }
-
+        
+        
         
         /// <summary>
         /// Return a user with the matching userId if it exists.
@@ -638,51 +660,12 @@ namespace Aguacongas.Identity.RavenDb
             return FindByIdAsync(userId.ToString(), cancellationToken);
         }
 
-        /// <summary>
-        /// Return a user login with the matching userId, provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="userId">The user's id.</param>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected override async Task<TUserLogin> FindUserLoginAsync(string userId, string loginProvider, string providerKey, CancellationToken cancellationToken)
+        private static void CloneEntity(object entity, Type type, object loaded)
         {
-            var data = await GetUserLoginsAsync(userId, cancellationToken).ConfigureAwait(false);
-            if (data != null)
+            foreach (var property in type.GetProperties())
             {
-                return data.FirstOrDefault(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey);
+                property.SetValue(entity, property.GetValue(loaded));
             }
-            return null;
-        }
-
-        /// <summary>
-        /// Return a user login with  provider, providerKey if it exists.
-        /// </summary>
-        /// <param name="loginProvider">The login provider name.</param>
-        /// <param name="providerKey">The key provided by the <paramref name="loginProvider"/> to identify a user.</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
-        /// <returns>The user login if it exists.</returns>
-        protected override Task<TUserLogin> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
-        {
-            return _session.Query<UserData<TKey, TUser, TUserClaim, TUserLogin>>()
-                .Where(d => d.Logins.Any(l=> l.LoginProvider == loginProvider && l.ProviderKey == providerKey))
-                .Select(d => d.Logins.First(l => l.LoginProvider == loginProvider && l.ProviderKey == providerKey))
-                .FirstOrDefaultAsync();
-        }
-
-        protected virtual async Task<List<TUserClaim>> GetUserClaimsAsync(TUser user, CancellationToken cancellationToken)
-        {
-            var userId = ConvertIdToString(user.Id);
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
-
-            return data.Claims;
-        }
-
-        protected virtual async Task<List<TUserLogin>> GetUserLoginsAsync(string userId, CancellationToken cancellationToken)
-        {
-            var data = await _session.LoadAsync<UserData<TKey, TUser, TUserClaim, TUserLogin>>($"user/{userId}", cancellationToken).ConfigureAwait(false);
-            return data.Logins;
         }
     }
 }
