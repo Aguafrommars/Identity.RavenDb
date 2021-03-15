@@ -22,6 +22,12 @@ You setup RavenDb stores using one `AddRavenDbStores` extension method
 You can setup RavenDb stores using the current IDocumentStore:
 
 ```cs
+services.AddSingleton(p => new DocumentStore
+{
+    Urls = new[] { "https://a.ravendb.local" },
+    Database = "Identity"
+}.SetFindIdentityPropertyForIdentityModel() // REQUIRED, Identity model identifiers are not computed by the database but the store
+.Initialize());
 services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
         .AddRavenDbStores(); 
 ```
@@ -29,8 +35,15 @@ services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfi
 Or with a `Func<IServiceProvider, IDocumentStore>` creating the `IDocumentStore` :
 
 ```cs
+var documentStore = new DocumentStore
+{
+    Urls = new[] { "https://a.ravendb.local" },
+    Database = "Identity"
+}.SetFindIdentityPropertyForIdentityModel() // REQUIRED, Identity model identifiers are not computed by the database but the store
+.Initialize();
+
 services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddRavenDbStores(p => p.GetRequiredService<IDocumentStore>());
+    .AddRavenDbStores(p => documentStore);
 ```
 
 Both methods can take a `string dataBase` parameter to specify the RavenDb database to use:
@@ -40,6 +53,9 @@ services.AddIdentity<IdentityUser, IdentityRole>()
     .AddRedisStores(dataBase: "Identity")
     .AddDefaultTokenProviders();
 ```
+
+> Your user and role class must be `IdentityUser` and `IdentityRole` or derived.
+
 ## Sample
 
 The [IdentitySample](samples/IdentitySample) is a dotnet webapp with individual authentication using a RavenDb database.  

@@ -24,9 +24,9 @@ namespace IdentitySample
             services.AddSingleton(p => new DocumentStore
             {
                 Urls = new[] { "https://a.ravendb.local" },
-                Database = "Test",
-                Certificate = new X509Certificate2(@"C:\Projects\Perso\helm-charts\cluster.admin.cert\cluster.admin.client.certificate.pfx", "p@$$w0rd")
-            }.Initialize())
+                Database = "Test"
+            }.SetFindIdentityPropertyForIdentityModel() // the store defined identifier. this call is required.
+            .Initialize())
             .AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
             .AddRavenDbStores(); 
             
