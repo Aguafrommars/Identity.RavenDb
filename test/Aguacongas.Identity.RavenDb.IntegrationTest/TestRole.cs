@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 namespace Aguacongas.Identity.RavenDb.IntegrationTest
 {
 #pragma warning disable CS0659 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
-    public class TestRole: IdentityRole<string>
+    public class TestRole: IdentityRole
 #pragma warning restore CS0659 // Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
     {
         public TestRole():base()

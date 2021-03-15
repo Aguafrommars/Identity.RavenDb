@@ -231,13 +231,12 @@ namespace Aguacongas.Identity.RavenDb
         /// <param name="roleId">The role ID to look for.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> used to propagate notifications that the operation should be canceled.</param>
         /// <returns>A <see cref="Task{TResult}"/> that result of the look up.</returns>
-        public virtual async Task<TRole> FindByIdAsync(string roleId, CancellationToken cancellationToken = default)
+        public virtual Task<TRole> FindByIdAsync(string roleId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
 
-            var data = await _session.LoadAsync<RoleData>($"role/{roleId}", builder => builder.IncludeDocuments(d => d.RoleId), cancellationToken).ConfigureAwait(false);
-            return await _session.LoadAsync<TRole>(data.RoleId, cancellationToken).ConfigureAwait(false);
+            return _session.LoadAsync<TRole>($"role/{roleId}", cancellationToken);
         }
 
         /// <summary>

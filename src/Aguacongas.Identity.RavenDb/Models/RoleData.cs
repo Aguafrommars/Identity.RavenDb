@@ -8,8 +8,8 @@ namespace Aguacongas.Identity.RavenDb
     {
         public string Id { get; set; }
 
-        public virtual string RoleId { get; set; }
+        public string RoleId { get; set; }
 
-        public virtual List<string> ClaimIds { get; private set; } = new List<string>();
+        public List<string> ClaimIds { get; private set; } = new List<string>();
     }
 }
