@@ -27,14 +27,16 @@ install:
     - sh: sudo chmod +x ./dotnet-install.sh
     - sh: sudo ./dotnet-install.sh -Channel Current -Version $donetsdk -InstallDir ./dotnetsdk -NoPath
     - sh: export PATH=/home/appveyor/projects/identity-ravendb/dotnetsdk:$PATH
+    - sh: sudo ./dotnet-install.sh -Channel Current -Version 5.0.403 -InstallDir ./dotnetsdk -NoPath
     - sh: sudo apt -y install nuget
-    - cmd: .\dotnet-install.ps1 -Version $env:donetsdk
-    - pwsh: dotnet tool install --global GitVersion.Tool
-    - pwsh: dotnet gitversion /l console /output buildserver
-    - pwsh: dotnet tool install --global dotnet-sonarscanner
+    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }  
+    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version 5.0.403 }  
+    - ps: dotnet tool install --global GitVersion.Tool
+    - ps: dotnet gitversion /l console /output buildserver
+    - ps: dotnet tool install --global dotnet-sonarscanner
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
-    - pwsh: ./appveyorinit.ps1
+    - ps: ./appveyorinit.ps1
 build_script:
 - ps: ./build.ps1
 test_script:
