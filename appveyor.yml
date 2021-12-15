@@ -14,7 +14,7 @@ image:
 environment:
   GH_TOKEN:
     secure: u7qaOQsrkLqq44yS24C0eM2vRCzp1A8gZTWNmlA58TIDJGmrDXguHL9H/vww7Fg/
-  donetsdk: 5.0.402
+  donetsdk: 6.0.100
   JAVA_HOME: C:\Program Files\Java\jdk14
 init:
     - cmd: git config --global core.autocrlf true
@@ -27,8 +27,10 @@ install:
     - sh: sudo chmod +x ./dotnet-install.sh
     - sh: sudo ./dotnet-install.sh -Channel Current -Version $donetsdk -InstallDir ./dotnetsdk -NoPath
     - sh: export PATH=/home/appveyor/projects/identity-ravendb/dotnetsdk:$PATH
+    - sh: sudo ./dotnet-install.sh -Channel Current -Version 5.0.403 -InstallDir ./dotnetsdk -NoPath
     - sh: sudo apt -y install nuget
-    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }
+    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }  
+    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version 5.0.403 }  
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: dotnet tool install --global dotnet-sonarscanner
