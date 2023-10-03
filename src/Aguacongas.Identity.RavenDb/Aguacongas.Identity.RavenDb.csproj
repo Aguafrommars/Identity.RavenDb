@@ -26,6 +26,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="7.0.11" />
-    <PackageReference Include="RavenDB.Client" Version="5.4.110" />
+    <PackageReference Include="RavenDB.Client" Version="6.0.0" />
   </ItemGroup>
 </Project>
