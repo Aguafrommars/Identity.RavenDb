@@ -1,5 +1,5 @@
 ﻿// Project: Aguafrommars/Identity.RavenDb
-// Copyright (c) 2021 Olivier Lefebvre
+// Copyright (c) 2025 Olivier Lefebvre
 using Raven.Client.Documents;
 using Raven.TestDriver;
 using System.Runtime.CompilerServices;
@@ -19,6 +19,13 @@ namespace Aguacongas.Identity.RavenDb.IntegrationTest
 
         class RavenDbTestDriverWrapper : RavenTestDriver
         {
+            static RavenDbTestDriverWrapper()
+            {
+                var testServerOptions = new TestServerOptions();
+                testServerOptions.Licensing.ThrowOnInvalidOrMissingLicense = false;
+                ConfigureServer(testServerOptions);
+            }
+
             public new IDocumentStore GetDocumentStore(GetDocumentStoreOptions options = null, [CallerMemberName] string database = null)
                 => base.GetDocumentStore(options, database);
 

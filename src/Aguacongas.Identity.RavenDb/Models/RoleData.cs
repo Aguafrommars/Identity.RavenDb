@@ -1,5 +1,5 @@
 ﻿// Project: Aguafrommars/Identity.RavenDb
-// Copyright (c) 2021 Olivier Lefebvre
+// Copyright (c) 2025 Olivier Lefebvre
 using System.Collections.Generic;
 
 namespace Aguacongas.Identity.RavenDb
