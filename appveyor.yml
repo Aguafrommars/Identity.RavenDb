@@ -19,7 +19,8 @@ init:
     - cmd: git config --global core.autocrlf true
 install:
     - ps: if ($isWindows) { Install-Product node '' }
-    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.404      
+    - ps: .\dotnet-install.ps1 -Version 8.0.12 -Runtime dotnet -Architecture x64 -InstallDir "C:\Program Files\dotnet"
+    - ps: .\dotnet-install.ps1 -Version 8.0.12 -Runtime aspnetcore -Architecture x64 -InstallDir "C:\Program Files\dotnet"
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }      
