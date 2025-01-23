@@ -29,6 +29,7 @@ install:
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
     - ps: ./appveyorinit.ps1
+    - ps: dotnet --list-runtimes
 build_script:
 - ps: ./build.ps1
 test_script:
