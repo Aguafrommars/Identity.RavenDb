@@ -18,10 +18,8 @@ environment:
 init:
     - cmd: git config --global core.autocrlf true
 install:
-    - ps: Install-Product node 20 x64
-    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.12 -Runtime dotnet -Architecture x64 -InstallDir "C:\Program Files\dotnet"
-    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.12 -Runtime aspnetcore -Architecture x64 -InstallDir "C:\Program Files\dotnet"
-    - ps: .\dotnet-install.ps1 -Version $env:donetsdk -InstallDir "C:\Program Files\dotnet"
+    - ps: if ($isWindows) { Install-Product node '' }
+    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.405      
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }      
@@ -29,7 +27,6 @@ install:
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
     - ps: ./appveyorinit.ps1
-    - ps: dotnet --list-runtimes
 build_script:
 - ps: ./build.ps1
 test_script:
