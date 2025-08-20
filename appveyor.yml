@@ -13,13 +13,13 @@ image:
 environment:
   GH_TOKEN:
     secure: /o9VAhx5ewGmdLR9qcgFJMzBaCuzOmGlsXAHu7khUJLdQzsv4gJzLUfYDghcRPHd
-  donetsdk: 9.0.301
+  donetsdk: 9.0.304
   JAVA_HOME: C:\Program Files\Java\jdk14
 init:
     - cmd: git config --global core.autocrlf true
 install:
     - ps: if ($isWindows) { Install-Product node '' }
-    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.411      
+    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.413      
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }      
