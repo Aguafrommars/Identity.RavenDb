@@ -19,7 +19,7 @@ init:
     - cmd: git config --global core.autocrlf true
 install:
     - ps: if ($isWindows) { Install-Product node '' }
-    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.414      
+    - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.416
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: dotnet tool install --global dotnet-sonarscanner
