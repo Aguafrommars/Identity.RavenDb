@@ -20,7 +20,7 @@ init:
 install:
     - ps: Install-Product node ''
     - ps: .\dotnet-install.ps1 -Version $env:donetsdk
-    - ps: dotnet tool install --global GitVersion.Tool
+    - cmd: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: dotnet tool install --global dotnet-sonarscanner
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
