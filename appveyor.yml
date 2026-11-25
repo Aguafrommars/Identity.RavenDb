@@ -19,10 +19,10 @@ init:
     - cmd: git config --global core.autocrlf true
 install:
     - ps: Install-Product node ''
-    - cmd: pwsh .\dotnet-install.ps1 -Version 10.0.404
+    - ps: .\dotnet-install.ps1 -Version 10.0.404 -InstallDir "C:\Program Files\dotnet"
     - cmd: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
-    - cmd: pwsh .\dotnet-install.ps1 -Version %donetsdk%
+    - cmd: pwsh .\dotnet-install.ps1 -Version %donetsdk% -InstallDir "C:\Program Files\dotnet"
     - ps: dotnet tool install --global dotnet-sonarscanner
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
