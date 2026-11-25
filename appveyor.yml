@@ -20,10 +20,10 @@ init:
 install:
     - ps: if ($isWindows) { Install-Product node '' }
     - cmd: pwsh .\dotnet-install.ps1 -Version 8.0.416
+    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }      
     - ps: dotnet tool install --global GitVersion.Tool
     - ps: dotnet gitversion /l console /output buildserver
     - ps: dotnet tool install --global dotnet-sonarscanner
-    - ps: if ($isWindows) { .\dotnet-install.ps1 -Version $env:donetsdk }      
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
     - cmd: nuget install ReportGenerator -ExcludeVersion
     - ps: ./appveyorinit.ps1
