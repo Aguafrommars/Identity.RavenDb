@@ -21,7 +21,7 @@ install:
     - ps: Install-Product node ''
     - ps: .\dotnet-install.ps1 -Version 10.0.404 -InstallDir "C:\Program Files\dotnet"
     - cmd: dotnet tool install --global GitVersion.Tool
-    - ps: dotnet gitversion --output buildserver
+    - cmd: dotnet gitversion --output buildserver
     - cmd: pwsh .\dotnet-install.ps1 -Version %donetsdk% -InstallDir "C:\Program Files\dotnet"
     - ps: dotnet tool install --global dotnet-sonarscanner
     - cmd: set PATH=%JAVA_HOME%\bin;%PATH%
